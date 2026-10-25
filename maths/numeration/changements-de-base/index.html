@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Six exercices interactifs pour découvrir les changements de base, le binaire et les pixels.">
+  <title>Mission binaire — Répétition de maths</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script defer src="js/data.js"></script>
+  <script defer src="js/conversions.js"></script>
+  <script defer src="js/exercises.js"></script>
+  <script defer src="js/guides.js"></script>
+  <script defer src="js/storage.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenu">Aller au contenu</a>
+  <header class="site-header"><a class="brand" href="index.html"><span class="brand-mark" aria-hidden="true">01</span> Mission binaire</a><span class="header-note">MATHS <span aria-hidden="true">/</span> NUMÉRATION</span><button class="text-button" type="button" data-guide="methodes">Guide des méthodes <span aria-hidden="true">→</span></button></header>
+  <main id="contenu" tabindex="-1">
+    <p id="storage-notice" class="notice" role="status" hidden>La sauvegarde locale est indisponible. Tu peux continuer ; tes réponses restent en mémoire pour cette session.</p>
+    <div id="screen"></div>
+    <noscript><p>Active JavaScript pour utiliser les exercices et les fiches interactives. Aucune connexion Internet n’est nécessaire après téléchargement des fichiers.</p></noscript>
+  </main>
+  <footer><span>Prends le temps de comprendre.</span><span>Sans compte · Sans note · À ton rythme</span></footer>
+  <dialog id="guide-dialog" aria-labelledby="guide-title"><div class="dialog-header"><p class="eyebrow">LA BOÎTE À OUTILS</p><button type="button" class="icon-button" id="close-guide" aria-label="Fermer la fiche">✕</button></div><h2 id="guide-title"></h2><div id="guide-content"></div><button type="button" class="button" id="return-guide">Retour à mon exercice</button></dialog>
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-description"><p class="eyebrow">À TOI DE CHOISIR</p><h2 id="confirm-title"></h2><p id="confirm-description"></p><div class="actions"><button type="button" class="button secondary" id="cancel-confirm">Annuler</button><button type="button" class="button" id="accept-confirm">Confirmer</button></div></dialog>
+</body>
+</html>
