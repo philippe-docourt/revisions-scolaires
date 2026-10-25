@@ -3,12 +3,17 @@
   const app = window.MissionBinaire;
   const key = 'mission-binaire:v1';
   const blankRecord = () => ({ answers: {}, attempts: 0, hints: 0, solutionViewed: false, solved: false });
-  const empty = () => ({ version: 1, current: 0, records: Object.fromEntries(app.data.map(ex => [ex.id, blankRecord()])) });
+  const empty = () => ({ version: 1, current: 0, positions: { 1: 0, 2: 6, 3: 12 }, records: Object.fromEntries(app.data.map(ex => [ex.id, blankRecord()])) });
   const count = value => Number.isSafeInteger(value) && value >= 0 ? value : 0;
   function sanitize(raw) {
     const state = empty();
     if (!raw || raw.version !== 1 || typeof raw.records !== 'object' || raw.records === null) return state;
     if (Number.isInteger(raw.current) && raw.current >= 0 && raw.current < app.data.length) state.current = raw.current;
+    state.positions[app.data[state.current].series] = state.current;
+    app.series.forEach(series => {
+      const position = raw.positions && raw.positions[series.number];
+      if (Number.isInteger(position) && app.data[position] && app.data[position].series === series.number) state.positions[series.number] = position;
+    });
     app.data.forEach(ex => {
       const saved = raw.records[ex.id];
       if (!saved || typeof saved !== 'object') return;
@@ -18,7 +23,7 @@
       record.solutionViewed = saved.solutionViewed === true;
       ex.fields.forEach(field => {
         const answer = saved.answers && saved.answers[field.id];
-        if (field.type === 'pixels' && Array.isArray(answer) && answer.length === 8) {
+        if ((field.type === 'pixels' || field.type === 'doors') && Array.isArray(answer) && answer.length === 8) {
           record.answers[field.id] = Array.from(answer, value => value === 0 || value === 1 ? value : null);
         } else if (typeof answer === 'string') record.answers[field.id] = answer;
       });

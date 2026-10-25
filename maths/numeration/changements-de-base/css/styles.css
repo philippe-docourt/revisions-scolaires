@@ -1016,3 +1016,110 @@ dialog p,dialog li {
     scroll-behavior:auto!important
   }
 }
+
+/* Choix libre de série et supports des nouvelles questions. */
+.series-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0 0;
+}
+.series-tab {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid #bcc8b6;
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+.series-tab[aria-current] {
+  background: var(--ink);
+  color: white;
+}
+.introduction {
+  padding: 18px;
+  border-radius: 8px;
+  background: #edf2df;
+  font-size: 14px;
+  line-height: 1.85;
+}
+select {
+  font: inherit;
+  display: block;
+  width: min(100%, 340px);
+  min-height: 52px;
+  padding: 12px;
+  border: 1px solid #afbea1;
+  border-radius: 7px;
+  background: #fafbf5;
+  color: var(--ink);
+}
+select[aria-invalid=true] {
+  border-color: #a74324;
+}
+.derived-address, .guide-output {
+  display: block;
+  padding: 16px;
+  margin: 18px 0;
+  font-family: monospace;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  background: #edf2df;
+  border-radius: 8px;
+}
+.guide-link {
+  display: block;
+}
+.door-grid .pixel.white {
+  background: var(--accent);
+}
+.ascii-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.ascii-table caption {
+  text-align: left;
+  margin-bottom: 10px;
+}
+.ascii-table th, .ascii-table td {
+  padding: 9px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.ascii-table td:last-child {
+  font-family: monospace;
+}
+input[type=range] {
+  width: 100%;
+  accent-color: var(--ink);
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+.color-swatch {
+  width: 100%;
+  height: 95px;
+  border: 1px solid #80966d;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+.color-presets .button {
+  min-width: 65px;
+}
+.ip-inputs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.ip-inputs input {
+  width: 100%;
+  font-size: 19px;
+  letter-spacing: 0;
+}
+@media (max-width: 700px) {
+  .series-tabs { gap: 8px; }
+  .series-tab { flex: 1; padding-inline: 10px; }
+  .ip-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ascii-table th, .ascii-table td { padding: 7px 4px; font-size: 11px; }
+}

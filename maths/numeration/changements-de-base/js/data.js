@@ -1,6 +1,11 @@
 (function () {
   'use strict';
   const app = window.MissionBinaire = {};
+  app.series = [
+    { number: 1, title: 'Les fondamentaux', description: 'Convertir, lire un octet, dessiner en pixels. Pose les premières briques.' },
+    { number: 2, title: 'L’informatique au quotidien', description: 'Des lettres aux couleurs : découvre comment les ordinateurs représentent l’information.' },
+    { number: 3, title: 'Défis et situations concrètes', description: 'Adresses IP, portes et capteurs : mets les bits au service de situations concrètes.' }
+  ];
   app.data = [
     { id: 's1e1', title: 'Du décimal au binaire', label: 'Conversion décimal → binaire',
       statement: 'Convertis 23₁₀ (23 en base dix) en base 2. Tu peux procéder par divisions successives par 2.',
@@ -28,5 +33,65 @@
       statement: 'Cinq interrupteurs peuvent chacun valoir 0 ou 1. Combien de configurations différentes sont possibles ? Et avec huit interrupteurs ?',
       fields: [{ id: 'five', label: 'Avec 5 interrupteurs', type: 'decimal', expected: 32 }, { id: 'eight', label: 'Avec 8 interrupteurs', type: 'decimal', expected: 256 }], guide: 'methodes',
       hints: ['Chaque interrupteur double le nombre de configurations.', 'Pour n interrupteurs, multiplie 2 par lui-même n fois : c’est 2 à la puissance n.'] }
+,
+    { id: 's2e1', title: 'Un octet un peu plus grand', label: 'Conversion sur huit bits',
+      statement: 'Convertis 173₁₀ (173 en base dix) en base 2 sur exactement huit bits.',
+      fields: [{ id: 'binary', label: '173 sur exactement 8 bits', type: 'binary', width: 8, expected: 173 }], guide: 'methodes',
+      hints: ['Commence par 128.', 'Après chaque poids utilisé, soustrais-le au nombre restant, puis passe au poids suivant.'] },
+    { id: 's2e2', title: 'Lire un octet', label: 'Les puissances de deux',
+      statement: 'Convertis 11001010₂ (en base deux) en décimal et retrouve les puissances de 2 utiles grâce à la méthode si nécessaire.',
+      fields: [{ id: 'decimal', label: 'Valeur décimale', type: 'decimal', expected: 202 }], guide: 'methodes',
+      hints: ['Additionne les colonnes de poids non nul.', 'Les huit poids, de gauche à droite : 128, 64, 32, 16, 8, 4, 2, 1.'] },
+    { id: 's2e3', title: 'Une lettre en ASCII', label: 'Coder et décoder',
+      introduction: 'Dans l’ASCII standard, A = 65, B = 66 et C = 67 en décimal. Un code ASCII standard utilise 7 bits ; on peut l’écrire sur un octet avec un zéro initial.',
+      statement: 'a. Quel code binaire de huit bits représente B ? b. Quelle lettre représente 01000011₂ (en base deux) ?',
+      fields: [{ id: 'binary', label: 'a. Code de B sur 8 bits', type: 'binary', width: 8, expected: 66 }, { id: 'letter', label: 'b. Lettre décodée', type: 'word', expected: 'C' }], guide: 'ascii',
+      hints: ['Convertis 66 ou 01000011 ; compare ensuite avec la mini-table.', 'Pour retrouver une lettre, calcule d’abord son code décimal, puis consulte la table.'] },
+    { id: 's2e4', title: 'Un message ASCII', label: 'Trois octets, un mot',
+      introduction: 'Mini-table : W = 87, E = 69 et B = 66 en décimal.',
+      statement: 'Décode les trois octets 01010111 01000101 01000010. Donne leurs valeurs décimales, puis le mot obtenu. Les quatre champs sont obligatoires.',
+      fields: [{ id: 'first', label: 'Premier octet en décimal', type: 'decimal', expected: 87 }, { id: 'second', label: 'Deuxième octet en décimal', type: 'decimal', expected: 69 }, { id: 'third', label: 'Troisième octet en décimal', type: 'decimal', expected: 66 }, { id: 'word', label: 'Mot décodé', type: 'word', expected: 'WEB' }], guide: 'ascii',
+      hints: ['Convertis chaque octet séparément, puis utilise la table ASCII.', 'Pour chaque octet, additionne les poids des bits à 1 ; garde le même ordre pour les lettres.'] },
+    { id: 's2e5', title: 'Le compteur huit bits', label: 'Comprendre la limite d’un octet',
+      statement: 'Un compteur non signé sur huit bits affiche 11111110₂ (en base deux). a. Combien vaut-il en décimal ? b. Quel code suit après un objet supplémentaire ? c. Pourquoi 256 ne tient-il pas ? Complète l’explication : les configurations représentent les entiers de la valeur minimale à la valeur maximale, zéro compris.',
+      fields: [{ id: 'decimal', label: 'a. Valeur actuelle en décimal', type: 'decimal', expected: 254 }, { id: 'next', label: 'b. Code suivant sur 8 bits', type: 'binary', width: 8, expected: 255 }, { id: 'combinations', label: 'c. Nombre de configurations (2 à la puissance 8)', type: 'decimal', expected: 256 }, { id: 'minimum', label: 'c. Valeur minimale représentée', type: 'decimal', expected: 0 }, { id: 'maximum', label: 'c. Valeur maximale représentée', type: 'decimal', expected: 255 }], guide: 'methodes',
+      hints: ['Tous les bits à 1 produisent la plus grande valeur possible sur 8 bits.', 'Le nombre de configurations inclut la valeur zéro : la valeur maximale est donc inférieure de 1 au nombre de configurations.'] },
+    { id: 's2e6', title: 'Composer une couleur RGB', label: 'Hexadécimal · 1/2',
+      introduction: 'Un écran mélange trois lumières : R = rouge, G = vert et B = bleu. Chaque intensité va de 0 (éteinte) à 255 (maximum). Dans #RRGGBB, deux chiffres hexadécimaux décrivent chaque lumière, dans cet ordre. La base 16 utilise 0 à 9 et A à F ; FF₁₆ = 255₁₀. Exemple : #FF0000 est rouge.',
+      statement: 'Un graphiste choisit rouge = 255, vert = 128, bleu = 64. Convertis chaque intensité en base 16 sur deux chiffres, puis écris la couleur au format #RRGGBB.',
+      fields: [{ id: 'red', label: 'Rouge : deux chiffres hexadécimaux', type: 'hex', width: 2, expected: 255 }, { id: 'green', label: 'Vert : deux chiffres hexadécimaux', type: 'hex', width: 2, expected: 128 }, { id: 'blue', label: 'Bleu : deux chiffres hexadécimaux', type: 'hex', width: 2, expected: 64 }, { id: 'color', label: 'Couleur complète #RRGGBB', type: 'color', expected: '#FF8040' }], guide: 'rgb', extraGuides: ['methodes'],
+      hints: ['Divise chaque valeur par 16 ; utilise le quotient et le reste.', 'Le quotient donne le premier chiffre, le reste donne le second. Écris ensuite les composantes dans l’ordre rouge, vert, bleu.'] },
+    { id: 's3e1', title: 'Au-delà de l’octet', label: 'Le nombre minimal de bits',
+      statement: 'Convertis 300₁₀ (300 en base dix) en binaire. Peut-on l’écrire sur huit bits ? Quel est le nombre minimal de bits nécessaires ?',
+      fields: [{ id: 'binary', label: '300 en binaire', type: 'binary', expected: 300 }, { id: 'fits', label: 'Peut-on écrire 300 sur 8 bits ?', type: 'choice', options: ['oui', 'non'], expected: 'non' }, { id: 'bits', label: 'Nombre minimal de bits', type: 'decimal', expected: 9 }], guide: 'methodes',
+      hints: ['2⁸ = 256 ; compare 300 et 255.', 'Le poids le plus grand dont tu as besoin détermine la longueur minimale du code.'] },
+    { id: 's3e2', title: 'Une adresse IPv4', label: 'Quatre nombres, quatre octets',
+      introduction: 'Une adresse IPv4 est ici constituée de quatre nombres décimaux de 0 à 255, séparés par des points. Chacun est stocké dans un octet.',
+      statement: 'L’adresse est 192.168.1.37. a. Convertis chacun des quatre nombres sur huit bits. b. L’adresse binaire sera reconstituée à partir de tes réponses, sans question supplémentaire. c. Un deuxième ordinateur a pour dernier octet 00101100₂ (en base deux) : combien vaut-il en décimal ?',
+      fields: [{ id: 'octet1', label: 'a. 192 sur 8 bits', type: 'binary', width: 8, expected: 192 }, { id: 'octet2', label: 'a. 168 sur 8 bits', type: 'binary', width: 8, expected: 168 }, { id: 'octet3', label: 'a. 1 sur 8 bits', type: 'binary', width: 8, expected: 1 }, { id: 'octet4', label: 'a. 37 sur 8 bits', type: 'binary', width: 8, expected: 37 }, { id: 'decimal', label: 'c. Dernier octet du deuxième ordinateur en décimal', type: 'decimal', expected: 44 }], guide: 'ip',
+      hints: ['Chaque nombre est converti séparément sur huit bits.', 'Complète chaque code à gauche avec des zéros pour atteindre huit bits ; conserve les points entre les octets.'] },
+    { id: 's3e3', title: 'Autoriser certaines portes', label: 'Une porte, un bit',
+      introduction: 'Par convention ici, porte 1 ↔ bit 0 à droite, porte 8 ↔ bit 7 à gauche. 1 = porte autorisée, 0 = porte interdite. Cette convention est propre à l’exercice.',
+      statement: 'a. Autorise uniquement les portes 2, 4 et 7 et écris l’octet correspondant. b. Donne sa valeur décimale. c. Autorise également la porte 6 : donne le nouvel état des portes, l’octet et sa valeur décimale. Renseigne toutes les portes et tous les champs.',
+      fields: [{ id: 'doors', label: 'a. État initial des portes', type: 'doors', binaryField: 'binary', expected: [0, 1, 0, 0, 1, 0, 1, 0] }, { id: 'binary', label: 'a. Octet des autorisations', type: 'binary', width: 8, expected: 74 }, { id: 'decimal', label: 'b. Valeur décimale', type: 'decimal', expected: 74 }, { id: 'newDoors', label: 'c. État des portes avec la porte 6 autorisée', type: 'doors', binaryField: 'newBinary', expected: [0, 1, 1, 0, 1, 0, 1, 0] }, { id: 'newBinary', label: 'c. Nouvel octet', type: 'binary', width: 8, expected: 106 }, { id: 'newDecimal', label: 'c. Nouvelle valeur décimale', type: 'decimal', expected: 106 }], guide: 'methodes',
+      hints: ['La porte n correspond au poids 2 à la puissance n−1.', 'Place les portes de 8 à 1 de gauche à droite ; autoriser une porte met son bit à 1.'] },
+    { id: 's3e4', title: 'Une erreur de transmission', label: 'Retrouver le bit modifié',
+      statement: 'Un capteur devait envoyer 10110110, mais l’ordinateur a reçu 10100110 (deux octets en binaire). Numérote les bits de 0 à droite à 7 à gauche. a. Quel bit a changé ? b. Convertis les deux octets en décimal. c. De combien ces valeurs diffèrent-elles ?',
+      fields: [{ id: 'bit', label: 'a. Numéro du bit modifié', type: 'decimal', expected: 4 }, { id: 'sent', label: 'b. Octet envoyé en décimal', type: 'decimal', expected: 182 }, { id: 'received', label: 'b. Octet reçu en décimal', type: 'decimal', expected: 166 }, { id: 'difference', label: 'c. Différence entre les valeurs', type: 'decimal', expected: 16 }], guide: 'methodes',
+      hints: ['Compare les deux octets colonne par colonne en partant de la droite.', 'Le poids du bit modifié explique la différence entre les deux valeurs.'] },
+    { id: 's3e5', title: 'Retrouver une couleur', label: 'Hexadécimal · 2/2',
+      introduction: 'RGB utilise #RRGGBB, deux chiffres hexadécimaux par composante rouge, verte et bleue.',
+      statement: 'Un graphiste utilise #7F00FF. Retrouve séparément les composantes décimales rouge, verte et bleue.',
+      fields: [{ id: 'red', label: 'Rouge en décimal', type: 'decimal', expected: 127 }, { id: 'green', label: 'Vert en décimal', type: 'decimal', expected: 0 }, { id: 'blue', label: 'Bleu en décimal', type: 'decimal', expected: 255 }], guide: 'rgb', extraGuides: ['methodes'],
+      hints: ['Sépare le code en trois paires : une par lumière.', 'Pour une paire hexadécimale, multiplie le premier chiffre par 16 et ajoute le second ; F représente 15.'] },
+    { id: 's3e6', title: 'Modifier un son', label: 'Un échantillon sur huit bits',
+      introduction: 'Dans cette représentation simplifiée du son, une valeur d’échantillon non signée est stockée sur huit bits.',
+      statement: 'L’échantillon vaut 10100101₂ (en base deux). Un programme augmente sa valeur de 10 unités décimales. a. Combien valait-il ? b. Quelle est sa nouvelle valeur décimale ? c. Quel est son nouveau code binaire sur huit bits ?',
+      fields: [{ id: 'original', label: 'a. Valeur initiale en décimal', type: 'decimal', expected: 165 }, { id: 'updated', label: 'b. Nouvelle valeur en décimal', type: 'decimal', expected: 175 }, { id: 'binary', label: 'c. Nouveau code sur 8 bits', type: 'binary', width: 8, expected: 175 }], guide: 'methodes',
+      hints: ['Convertis, ajoute 10, puis reconvertis sur huit bits.', 'L’ajout porte sur la valeur décimale, pas sur les caractères du code binaire.'] }
   ];
+  app.data.forEach((exercise, index) => {
+    exercise.series = Math.floor(index / 6) + 1;
+    exercise.position = index % 6 + 1;
+  });
 }());

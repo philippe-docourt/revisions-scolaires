@@ -22,6 +22,11 @@
     fromBinary: (input, width) => parseDigits(input, 2, /^[01]+$/, width),
     toBinary: (value, width) => encode(value, 2, width),
     fromHex: (input, width) => parseDigits(input, 16, /^[0-9a-fA-F]+$/, width),
-    toHex: (value, width) => encode(value, 16, width)
+    toHex: (value, width) => encode(value, 16, width),
+    parseColor(input) {
+      if (typeof input !== 'string' || !/^#?[0-9a-f]{6}$/i.test(input.trim())) return null;
+      return '#' + input.trim().replace(/^#/, '').toUpperCase();
+    },
+    asciiCode: input => typeof input === 'string' && /^[\x20-\x7e]$/.test(input) ? input.charCodeAt(0) : null
   };
 }());

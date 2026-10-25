@@ -1,18 +1,26 @@
 # Atelier Révisions
 
-Un catalogue scolaire statique et des activités autonomes, en français. Le **lot 1** propose une seule activité : **Maths → Numération → Changements de base**, intitulée **Mission binaire — Répétition de maths**.
+Un catalogue scolaire statique et des activités autonomes, en français. Les **lots 1 et 2** proposent une seule activité : **Maths → Numération → Changements de base**, intitulée **Mission binaire — Répétition de maths**.
 
 ## Contenu livré
 
 - Accueil général construit à partir des métadonnées de `js/catalogue.js`.
-- Accueil du module, six exercices de la série 1, navigation libre, essais illimités, deux indices par exercice et corrigé détaillé après confirmation.
-- Fiches interactives **Méthodes** et **Pixels**, accessibles sans perdre ses réponses ; fermeture par bouton ou Échap et restitution du focus.
-- Pixels initialement indéterminés, puis noir/blanc au clic ou au clavier. Toutes les sous-questions sont obligatoires pour réussir un exercice.
-- Sauvegarde locale des réponses, essais, indices et réussites ; repli en mémoire si le navigateur bloque le stockage et remise à zéro confirmée. Il s’agit d’un support minimal de reprise, pas du bilan complet prévu ensuite.
+- **18 exercices en trois séries de six**, navigation libre, essais illimités, deux indices par exercice et corrigé détaillé après confirmation.
+- **Cinq fiches interactives : Méthodes, Pixels, ASCII, RGB et adresses IP**, sans perte des réponses ; fermeture par bouton ou Échap et restitution du focus.
+- Pixels et portes initialement indéterminés, puis choix au clic ou au clavier. Toutes les sous-questions obligatoires doivent être correctes.
+- Reprise locale des réponses, essais, indices et réussites, avec position conservée pour chaque série ; repli en mémoire si le stockage est bloqué et remise à zéro confirmée. Les sauvegardes du lot 1 sont conservées.
 
-Les séries 2 et 3 sont uniquement annoncées « à venir ». Les activités ASCII, RGB et IPv4, le bilan des 18 exercices et les finitions du lot 3 restent hors de cette livraison. Les exemples hexadécimaux de la fiche Méthodes font partie de la fiche demandée. Aucun site n’est publié par ce dépôt ou par les tests.
+**Les séries 2 et 3 sont accessibles immédiatement**, même si la série 1 n’est pas terminée. Depuis l’accueil, choisir « Commencer la série 2 » ou « Commencer la série 3 ». Dans un exercice, utiliser les boutons de série puis les numéros 01 à 06. « Exercice suivant » ne demande aucune réponse préalable.
 
-La [spécification fonctionnelle V1.2](maths/numeration/changements-de-base/specification.md) fait autorité ; seule la section **lot 1** est implémentée.
+Les exercices respectent la [spécification fonctionnelle V1.2](maths/numeration/changements-de-base/specification.md). Choix de présentation des questions multiparties :
+
+- Exercice 10 : les trois conversions décimales **et** le mot sont obligatoires, comme annoncé dans l’énoncé.
+- Exercice 11 : l’explication de la limite est complétée par le nombre de configurations et les bornes minimale/maximale ; le corrigé explique pourquoi zéro occupe l’une des configurations.
+- Exercice 14 : les quatre octets sont saisis ; l’adresse pointée est reconstituée à partir de ces réponses et n’ajoute aucune question à valider. Le dernier octet décimal reste obligatoire.
+- Exercice 15 : deux panneaux de portes neutres représentent les états initial et modifié ; chaque porte doit être renseignée. Leur correspondance avec les octets saisis est vérifiée, porte 1 = bit 0 à droite.
+- Les lettres/mots ASCII et les codes hexadécimaux acceptent les minuscules et majuscules. Les composantes RGB ont exactement deux chiffres hexadécimaux ; le code complet est affiché dans le corrigé sous la forme canonique `#RRGGBB`.
+
+Le **lot 3** (bilan dédié, finitions et audit plus complet de l’accessibilité/hors ligne) reste à réaliser. Aucun site n’est publié par ce dépôt ou les tests ; aucun déploiement automatique n’est configuré.
 
 ## Prévisualiser
 
@@ -38,7 +46,7 @@ maths/numeration/changements-de-base/
   index.html                       Application autonome
   specification.md                 Référence pédagogique approuvée
   css/styles.css                   Styles du module
-  js/data.js                       Six énoncés, champs, réponses et indices
+  js/data.js                       18 énoncés, champs, réponses et indices
   js/conversions.js                Conversions et lecture stricte des entiers
   js/exercises.js                  Correction, solutions calculées et statuts
   js/guides.js                     Fiches et interactions sans score
@@ -59,7 +67,7 @@ Node.js **20 ou plus récent** est nécessaire uniquement au développement.
 npm test
 ```
 
-Cette commande n’exige aucune installation de paquet. Elle exécute les tests unitaires et d’architecture avec `node:test` : conversions et aller-retour de tous les octets, entiers invalides, zéros de tête, huit bits obligatoires, six corrigés de référence, sous-questions, pixels, sauvegarde et restrictions de stockage, chemins locaux, catalogue et ordre des scripts.
+Cette commande n’exige aucune installation de paquet. Elle exécute les tests unitaires et d’architecture avec `node:test` : conversions et aller-retour de tous les octets, entiers invalides, zéros de tête, huit bits obligatoires, 18 corrigés de référence, sous-questions, pixels et portes, sauvegarde et restrictions de stockage, chemins locaux, catalogue et ordre des scripts.
 
 Pour les tests navigateur, installer la dépendance **de développement** Playwright et Chromium :
 
@@ -75,13 +83,15 @@ Si Chromium est déjà installé à `/usr/bin/chromium`, le test l’utilise aut
 npm run test:all
 ```
 
-Les tests navigateur démarrent et arrêtent leur propre serveur sur un port libre. Ils vérifient les six exercices sur ordinateur (1440 px) et mobile (375 px), un écran à 320 px, les indices et confirmations, les pixels au clavier, les fiches et le focus, la reprise après rechargement HTTP, le stockage bloqué, les chemins sous un préfixe et l’ouverture `file://` hors ligne d’une copie indépendante du module. Ils produisent des captures dans `artifacts/` (ignoré par Git) :
+Les tests navigateur démarrent et arrêtent leur propre serveur sur un port libre. Ils vérifient les 18 exercices sur ordinateur (1440 px) et mobile (375 px), un écran à 320 px, les indices et confirmations, les pixels au clavier, les fiches et le focus, la reprise après rechargement HTTP, le stockage bloqué, les chemins sous un préfixe et l’ouverture `file://` hors ligne d’une copie indépendante du module. Ils produisent des captures dans `artifacts/` (ignoré par Git) :
 
 - `catalogue-desktop.png`, `catalogue-mobile.png` ;
 - `mission-desktop.png`, `mission-mobile.png` ;
-- `pixels-mobile.png`, `fiche-pixels-mobile.png`.
+- `pixels-mobile.png`, `fiche-pixels-mobile.png` ;
+- `ascii-desktop.png`, `ascii-mobile.png`, `rgb-desktop.png`, `rgb-mobile.png`, `ip-desktop.png`, `ip-mobile.png` ;
+- `exercice-rgb-desktop.png`, `exercice-rgb-mobile.png`, `portes-desktop.png`, `portes-mobile.png`.
 
-Validation du lot 1 dans l’environnement cloud : **18 tests unitaires/d’architecture et 8 tests navigateur réussis**, aucun échec. Le contrôle `file://` est **non exécuté** ici : la politique du Chromium fourni renvoie `ERR_BLOCKED_BY_ADMINISTRATOR`. Ce cas reste automatisé pour un navigateur local autorisant les fichiers ; l’autonomie du dossier copié a été vérifiée séparément en HTTP. Les captures générées ont été inspectées sur ordinateur et mobile.
+Le [rapport du lot 2](tests/rapport-lot-2.md) détaille les résultats et les limites. Le contrôle `file://` reste automatisé, mais la politique du Chromium cloud peut l’interdire (`ERR_BLOCKED_BY_ADMINISTRATOR`) : il est alors signalé **non exécuté**, jamais réussi. L’autonomie du dossier copié est également vérifiée séparément en HTTP.
 
 Les tests automatisés ne constituent pas un audit exhaustif d’accessibilité ou une validation sur tous les navigateurs. La sauvegarde `file://` dépend du navigateur ; la reprise persistante est vérifiée en HTTP.
 

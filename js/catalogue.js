@@ -4,7 +4,7 @@
   site.catalogue = [{
     id: 'changements-de-base', titre: 'Changements de base', matiere: 'Maths', theme: 'Numération',
     niveau: 'Scolarité obligatoire · Découverte', tags: ['Binaire', 'Conversions', 'Pixels'],
-    chemin: 'maths/numeration/changements-de-base/', nombreExercices: 6,
+    chemin: 'maths/numeration/changements-de-base/', nombreExercices: 18,
     description: 'Entre dans Mission binaire : apprends à lire les 0 et les 1, convertis des nombres et dessine avec des pixels.'
   }];
   const container = document.getElementById('catalogue');
@@ -36,7 +36,7 @@
         activity.tags.forEach(tag => tags.append(text('li', tag)));
         content.append(tags);
         const action = text('div', '', 'card-action');
-        action.append(text('p', `${activity.nombreExercices} exercices · Série 1`));
+        action.append(text('p', `${activity.nombreExercices} exercices · 3 séries`));
         const link = text('a', 'Ouvrir l’activité →', 'button'); link.href = activity.chemin;
         action.append(link); card.append(art, content, action); section.append(card);
       });

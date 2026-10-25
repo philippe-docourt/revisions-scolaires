@@ -4,10 +4,7 @@ const assert = require('node:assert/strict');
 const { load } = require('./helpers.cjs');
 const app = load();
 const c = app.conversions;
-const references = [
-  { binary: '10111' }, { decimal: '45' }, { binary: '01010110' }, { decimal: '53' },
-  { binary: '00101101', pixels: [0, 0, 1, 0, 1, 1, 0, 1], white: '4' }, { five: '32', eight: '256' }
-];
+const references = require('./references.cjs');
 test('10↔2 et 10↔16 : tous les octets, avec remplissage et aller-retour', () => {
   for (let value = 0; value <= 255; value += 1) {
     assert.equal(c.fromBinary(c.toBinary(value)), value);
@@ -47,13 +44,13 @@ test('Formats invalides et bornes : aucune troncature ni approximation', () => {
   assert.throws(() => c.toHex(256, 2));
 });
 app.data.forEach((ex, index) => {
-  test(`Série 1, exercice ${index + 1} : référence approuvée et sous-questions obligatoires`, () => {
+  test(`Série ${ex.series}, exercice ${ex.position} : référence approuvée et sous-questions obligatoires`, () => {
     assert.equal(app.exercises.check(ex, references[index]).correct, true);
     assert.equal(app.exercises.check(ex, {}).correct, false);
     ex.fields.forEach(field => {
       const incomplete = { ...references[index] }; delete incomplete[field.id];
       assert.equal(app.exercises.check(ex, incomplete).correct, false, field.id);
-      const wrong = { ...references[index], [field.id]: field.type === 'pixels' ? [1, 0, 1, 1, 0, 1, 0, 0] : '999' };
+      const wrong = { ...references[index], [field.id]: ['pixels', 'doors'].includes(field.type) ? [1, 0, 1, 1, 0, 1, 0, 0] : '999' };
       const result = app.exercises.check(ex, wrong);
       assert.equal(result.correct, false, field.id); assert.ok(result.errors[field.id]);
     });
@@ -78,7 +75,7 @@ test('Pixels : pas de préremplissage, huit couleurs requises et ordre gauche/dr
 test('État absent, corrompu ou incompatible : initialisation sûre', () => {
   for (const raw of [null, '', '{oops', 'null', '[]', '{"version":99}', '{"version":1,"records":null}']) {
     const store = app.storage.createStore({ getItem: () => raw, setItem() {} });
-    const state = store.load(); assert.equal(state.current, 0); assert.equal(Object.keys(state.records).length, 6);
+    const state = store.load(); assert.equal(state.current, 0); assert.equal(Object.keys(state.records).length, 18);
     assert.equal(state.records.s1e1.solved, false);
   }
 });
@@ -115,4 +112,54 @@ test('Statuts : essais, indices, solution consultée, puis résolution autonome'
   assert.equal(app.exercises.status(record), 'Réussi après aide ou tentative'); record.solved = false; record.solutionViewed = true;
   assert.equal(app.exercises.status(record), 'Solution consultée'); record.solved = true;
   assert.equal(app.exercises.status(record), 'Réussi après aide ou tentative');
+});
+
+test('Hexadécimal et couleurs : casse, longueur, format canonique et erreurs', () => {
+  assert.equal(c.parseColor(' ff8040 '), '#FF8040');
+  assert.equal(c.parseColor('#7f00ff'), '#7F00FF');
+  for (const value of ['', '#FFF', '##FF8040', 'FF 8040', '#FF80400', '#FF80G0', '#RRGGBB', null]) assert.equal(c.parseColor(value), null);
+  const ex = app.data[11]; const reference = references[11];
+  assert.equal(app.exercises.check(ex, { ...reference, red: ' ff ', color: 'ff8040' }).correct, true);
+  for (const red of ['F', 'FFF', '256', 'G0', '#FF']) assert.equal(app.exercises.check(ex, { ...reference, red }).correct, false);
+  for (const color of ['#FF804', '#FF80400', '#FF804G', '#8040FF']) assert.equal(app.exercises.check(ex, { ...reference, color }).correct, false);
+  assert.equal(app.exercises.solution(ex).at(-1), 'Dans l’ordre RR GG BB : #FF8040.');
+});
+test('ASCII : codes standard, lettres et mots ; aucun caractère étendu', () => {
+  assert.equal(c.asciiCode('A'), 65); assert.equal(c.asciiCode(' '), 32);
+  for (const input of ['é', '😀', 'AB', '', '\n', '\x7f']) assert.equal(c.asciiCode(input), null);
+  assert.equal(app.exercises.check(app.data[8], { binary: '0100 0010', letter: ' c ' }).correct, true);
+  assert.equal(app.exercises.check(app.data[9], { ...references[9], word: 'web' }).correct, true);
+  for (const word of ['W E B', 'WÉB', 'WEB1']) assert.equal(app.exercises.check(app.data[9], { ...references[9], word }).correct, false);
+  assert.equal(app.exercises.check(app.data[9], { word: 'WEB' }).correct, false);
+});
+test('Portes : huit états requis, porte 1 à droite et correspondance octet obligatoire', () => {
+  const ex = app.data[14]; const reference = references[14];
+  assert.equal(c.fromBinary(reference.doors.join('')), 74);
+  assert.equal(c.fromBinary(reference.newDoors.join('')), 106);
+  for (const doors of [Array(8), Array(8).fill(null), reference.doors.slice(0, 7), [...reference.doors].reverse()]) assert.equal(app.exercises.check(ex, { ...reference, doors }).correct, false);
+  const mismatch = app.exercises.check(ex, { ...reference, binary: '01101010' });
+  assert.match(mismatch.errors.doors, /correspondance portes/);
+  assert.equal(app.exercises.check(ex, { ...reference, newDoors: reference.doors }).correct, false);
+});
+test('IPv4 : tous les octets et le dernier décimal sont obligatoires', () => {
+  const ex = app.data[13]; const reference = references[13];
+  for (const octet3 of ['1', '000000001', '256', '00000002']) assert.equal(app.exercises.check(ex, { ...reference, octet3 }).correct, false);
+  assert.equal(app.exercises.check(ex, { ...reference, octet3: '0000 0001' }).correct, true);
+  assert.equal(app.exercises.check(ex, { ...reference, decimal: '' }).correct, false);
+  assert.match(app.exercises.solution(ex).join(' '), /11000000\.10101000\.00000001\.00100101/);
+});
+test('Migration du lot 1 : progression conservée, nouvelles séries disponibles sans verrou', () => {
+  const old = { version: 1, current: 4, records: { s1e1: { answers: { binary: '10111' }, attempts: 1, hints: 0, solutionViewed: false, solved: true } } };
+  const state = app.storage.sanitize(old);
+  assert.equal(state.records.s1e1.solved, true);
+  assert.equal(Object.keys(state.records).length, 18);
+  assert.equal(state.positions[1], 4); assert.equal(state.positions[2], 6); assert.equal(state.positions[3], 12);
+  state.positions[2] = 11; state.positions[3] = 14;
+  state.records.s3e3.answers = references[14]; state.records.s3e3.attempts = 1; state.records.s3e3.solved = true;
+  const restored = app.storage.sanitize(JSON.parse(JSON.stringify(state)));
+  assert.equal(restored.positions[2], 11); assert.equal(restored.positions[3], 14); assert.equal(restored.records.s3e3.solved, true);
+});
+test('Tous les corrigés restituent les résultats approuvés des séries 2 et 3', () => {
+  const tokens = [ ['10101101'], ['202', '128 + 64 + 8 + 2'], ['01000010', '67', 'C'], ['87', '69', '66', 'WEB'], ['254', '11111111', '256', '255'], ['FF', '80', '40', '#FF8040'], ['100101100', '9 bits', 'Non'], ['11000000.10101000.00000001.00100101', '44'], ['01001010', '74', '01101010', '106'], ['bit 4', '182', '166', '16'], ['127', '0', '255'], ['165', '175', '10101111'] ];
+  tokens.forEach((results, i) => { const solution = app.exercises.solution(app.data[i + 6]).join(' '); results.forEach(value => assert.ok(solution.includes(value), `${app.data[i + 6].id} : ${value}`)); });
 });

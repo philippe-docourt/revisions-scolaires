@@ -26,8 +26,8 @@ test('Ordre des scripts classiques et autonomie du module', () => {
     const source = fs.readFileSync(file, 'utf8');
     assert.doesNotMatch(source, /(?:fetch\s*\(|XMLHttpRequest|https?:\/\/|\.\.\/|\bimport\s)/, file);
   }
-  assert.equal(load().data.length, 6);
-  assert.deepEqual(Object.keys(load().storage.empty().records), ['s1e1', 's1e2', 's1e3', 's1e4', 's1e5', 's1e6']);
+  assert.equal(load().data.length, 18);
+  assert.deepEqual(Object.keys(load().storage.empty().records), Array.from({ length: 18 }, (_, i) => `s${Math.floor(i / 6) + 1}e${i % 6 + 1}`));
 });
 test('Catalogue : une seule activité réelle, classée Maths → Numération', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8'); assert.match(html, /Atelier Révisions/);
@@ -37,7 +37,7 @@ test('Catalogue : une seule activité réelle, classée Maths → Numération', 
   const activity = catalogue[0];
   for (const key of ['id', 'titre', 'matiere', 'theme', 'niveau', 'tags', 'chemin']) assert.ok(activity[key]);
   assert.equal(activity.matiere, 'Maths'); assert.equal(activity.theme, 'Numération');
-  assert.equal(activity.nombreExercices, 6); assert.equal(activity.chemin, 'maths/numeration/changements-de-base/');
+  assert.equal(activity.nombreExercices, 18); assert.equal(activity.chemin, 'maths/numeration/changements-de-base/');
   assert.ok(fs.existsSync(path.join(root, activity.chemin, 'index.html')));
   assert.doesNotMatch(source, /expected|solution|answers/);
 });
