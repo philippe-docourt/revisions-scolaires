@@ -23,24 +23,31 @@
       record.solutionViewed = saved.solutionViewed === true;
       ex.fields.forEach(field => {
         const answer = saved.answers && saved.answers[field.id];
-        if ((field.type === 'pixels' || field.type === 'doors') && Array.isArray(answer) && answer.length === 8) {
-          record.answers[field.id] = Array.from(answer, value => value === 0 || value === 1 ? value : null);
+        if (field.type === 'pixels' || field.type === 'doors') {
+          if (Array.isArray(answer) && answer.length === 8) {
+            record.answers[field.id] = Array.from(answer, value => value === 0 || value === 1 ? value : null);
+          }
         } else if (typeof answer === 'string') record.answers[field.id] = answer;
       });
       record.solved = saved.solved === true && record.attempts > 0 && app.exercises.check(ex, record.answers).correct;
     });
     return state;
   }
-  function createStore(storage, onUnavailable = () => {}) {
+  function createStore(storage, onUnavailable = () => {}, onRecovered = () => {}) {
     let memory = empty();
     let persistent = true;
     function unavailable() { if (persistent) { persistent = false; onUnavailable(); } }
     return {
       load() {
+        if (!persistent) return memory;
         try {
           const raw = storage.getItem(key);
           if (raw !== null) {
-            try { memory = sanitize(JSON.parse(raw)); } catch { memory = empty(); }
+            try {
+              const parsed = JSON.parse(raw);
+              if (!parsed || parsed.version !== 1 || !parsed.records || typeof parsed.records !== 'object') onRecovered();
+              memory = sanitize(parsed);
+            } catch { memory = empty(); onRecovered(); }
           }
         } catch { unavailable(); }
         return memory;

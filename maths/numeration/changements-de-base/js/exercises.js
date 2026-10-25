@@ -78,5 +78,27 @@
     if (record.solutionViewed) return 'Solution consultée';
     return record.attempts ? 'En cours' : 'À explorer';
   }
-  app.exercises = { check, solution, decomposition, divisions, status };
+  const reviewLabels = {
+    independent: 'Réussi sans aide',
+    supported: 'Réussi après indice ou tentative',
+    revealed: 'Solution consultée',
+    unfinished: 'Pas encore terminé'
+  };
+  function review(state) {
+    const totals = { independent: 0, supported: 0, revealed: 0, unfinished: 0, attempted: 0, solved: 0 };
+    const items = app.data.map(exercise => {
+      const record = state.records[exercise.id];
+      const category = record.solved
+        ? (record.hints || record.attempts > 1 || record.solutionViewed ? 'supported' : 'independent')
+        : (record.solutionViewed ? 'revealed' : 'unfinished');
+      totals[category] += 1;
+      if (record.attempts > 0) totals.attempted += 1;
+      if (record.solved) totals.solved += 1;
+      const needsPractice = category === 'supported' || category === 'revealed' ||
+        (!record.solved && (record.attempts > 0 || record.hints > 0));
+      return { exercise, category, label: reviewLabels[category], needsPractice };
+    });
+    return { items, totals };
+  }
+  app.exercises = { check, solution, decomposition, divisions, status, review, reviewLabels };
 }());

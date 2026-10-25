@@ -345,7 +345,7 @@ h2 {
 }
 .list-number {
   font-family:monospace;
-  color:#677961
+  color:#52634d
 }
 .status {
   font-size:11px;
@@ -1122,4 +1122,77 @@ input[type=range] {
   .series-tab { flex: 1; padding-inline: 10px; }
   .ip-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ascii-table th, .ascii-table td { padding: 7px 4px; font-size: 11px; }
+}
+
+/* Bilan descriptif, sans note ni classement. */
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.header-tools .text-button { font-size: 12px; }
+.review-hero { padding: 36px 0 24px; }
+.review-hero h1 {
+  font-size: clamp(36px, 5vw, 58px);
+  line-height: 1.15;
+  letter-spacing: -1.7px;
+  margin: 12px 0 20px;
+  font-weight: 650;
+}
+.review-hero .intro { max-width: 700px; }
+.review-counts { font-size: 14px; margin: 20px 0 0; }
+.review-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 42px;
+}
+.review-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+}
+.review-tile dt { font-size: 13px; }
+.review-tile dd { font-size: 34px; line-height: 1.1; margin: 0; }
+.review-tile.independent { background: #e8f0d8; }
+.review-tile.supported { background: #edf1e6; }
+.review-tile.revealed { background: #fbf0df; }
+.review-series { margin: 32px 0; }
+.review-list { list-style: none; padding: 0; margin: 18px 0; }
+.review-item {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 8px;
+  border-top: 1px solid var(--line);
+}
+.review-item:last-child { border-bottom: 1px solid var(--line); }
+.review-item-copy { min-width: 0; }
+.review-jump { font-size: 15px; padding-top: 0; }
+.review-item .status { margin-top: 5px; white-space: normal; max-width: 210px; }
+.review-details { color: var(--muted); font-size: 12px; margin: 0; }
+.review-advice { margin: 14px 0 0; padding-left: 14px; border-left: 2px solid #879e6c; }
+.review-advice p { font-size: 13px; margin: 0; }
+.review-advice .guide-link { font-size: 12px; min-height: 44px; }
+.guide-output, .introduction { overflow-wrap: anywhere; }
+.field-help { font-size: 12px; }
+@media (max-width: 700px) {
+  .site-header { flex-wrap: wrap; padding-block: 14px; gap: 8px 12px; }
+  .header-tools { margin-left: auto; gap: 16px; }
+  .review-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .review-tile { padding: 16px; }
+  .review-tile dt { font-size: 12px; }
+  .review-item { display: block; padding-inline: 0; }
+  .review-item .status { display: inline-block; margin: 14px 0 0; }
+  .bit-grid { gap: 3px; }
+}
+@media (max-width: 480px) {
+  .header-tools { width: 100%; justify-content: space-between; margin-left: 0; }
 }

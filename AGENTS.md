@@ -1,6 +1,6 @@
 # Conventions du dépôt
 
-- Lire intégralement la spécification de l’activité avant de la modifier : `maths/numeration/changements-de-base/specification.md`. C’est la référence pédagogique approuvée. Respecter le lot demandé. Les lots 1 et 2 livrent les trois séries et les cinq fiches ; le bilan dédié et les finitions du lot 3 restent à traiter séparément.
+- Lire intégralement la spécification de l’activité avant de la modifier : `maths/numeration/changements-de-base/specification.md`. C’est la référence pédagogique approuvée. Respecter le lot demandé. Les lots 1 à 3 livrent les trois séries, les cinq fiches et le bilan. Les illustrations supplémentaires restent un chantier séparé.
 - Utiliser le checkout existant. Les tâches cloud sont isolées ; ne pas créer de worktree sans demande explicite. Travailler dans une branche dédiée, sans fusionner dans `main` ni publier de site sans autorisation.
 - Livrer un site statique natif, sans backend, framework, dépendance d’exécution ou build. Aucune ressource distante, `fetch()` de données ni ES Module : l’ouverture `file://` doit fonctionner.
 - Charger les scripts classiques avec `defer` depuis le `<head>`, dans l’ordre `data`, `conversions`, `exercises`, `guides`, `storage`, `app`. Un seul espace global pour le module : `window.MissionBinaire`.
@@ -14,3 +14,6 @@
 - Documenter les commandes et limites dans `README.md`. Conserver la spécification approuvée inchangée. Ne pas publier de site ou implémenter un nouveau lot sans demande.
 
 - Les séries et exercices restent librement accessibles, sans condition de réussite préalable. Conserver les sauvegardes `mission-binaire:v1` du lot 1 lors de l’ajout de contenu. Les tests de référence dans `tests/references.cjs` proviennent de la spécification et restent indépendants des réponses de `data.js`.
+
+- Le bilan utilise les quatre catégories de la spécification ; une solution consultée ne devient une réussite qu’après validation correcte. Ne pas confondre un exercice tenté avec un exercice réussi. Préserver les anciens formats de sauvegarde et traiter les états partiellement malformés.
+- Après une modification d’interface, conserver les contrôles axe-core, clavier, reflow et reprise après redémarrage. Signaler honnêtement les contrôles non exécutés (notamment `file://` bloqué par une politique navigateur), sans désactiver les règles ou contourner la politique. `npm run export` prépare uniquement des fichiers statiques ; il ne publie rien.

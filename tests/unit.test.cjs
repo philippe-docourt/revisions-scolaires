@@ -163,3 +163,56 @@ test('Tous les corrigés restituent les résultats approuvés des séries 2 et 3
   const tokens = [ ['10101101'], ['202', '128 + 64 + 8 + 2'], ['01000010', '67', 'C'], ['87', '69', '66', 'WEB'], ['254', '11111111', '256', '255'], ['FF', '80', '40', '#FF8040'], ['100101100', '9 bits', 'Non'], ['11000000.10101000.00000001.00100101', '44'], ['01001010', '74', '01101010', '106'], ['bit 4', '182', '166', '16'], ['127', '0', '255'], ['165', '175', '10101111'] ];
   tokens.forEach((results, i) => { const solution = app.exercises.solution(app.data[i + 6]).join(' '); results.forEach(value => assert.ok(solution.includes(value), `${app.data[i + 6].id} : ${value}`)); });
 });
+
+test('Bilan : quatre catégories exclusives, tentatives et réussites distinctes', () => {
+  const state = app.storage.empty();
+  Object.assign(state.records.s1e1, { attempts: 1, solved: true });
+  Object.assign(state.records.s1e2, { attempts: 2, solved: true });
+  Object.assign(state.records.s1e3, { attempts: 0, solutionViewed: true });
+  Object.assign(state.records.s1e4, { attempts: 1, solved: false });
+  const result = app.exercises.review(state);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.totals)), { independent: 1, supported: 1, revealed: 1, unfinished: 15, attempted: 3, solved: 2 });
+  assert.equal(result.items.length, 18);
+  assert.equal(result.items[0].needsPractice, false);
+  for (const index of [1, 2, 3]) assert.equal(result.items[index].needsPractice, true);
+  assert.equal(result.items[4].needsPractice, false);
+});
+test('Bilan : un indice seul ne compte pas comme validation, une solution résolue devient réussite avec aide', () => {
+  const state = app.storage.empty(); state.records.s1e1.hints = 1;
+  let result = app.exercises.review(state);
+  assert.equal(result.totals.attempted, 0); assert.equal(result.items[0].category, 'unfinished'); assert.equal(result.items[0].needsPractice, true);
+  Object.assign(state.records.s1e2, { attempts: 1, solved: true, solutionViewed: true });
+  result = app.exercises.review(state); assert.equal(result.items[1].category, 'supported'); assert.equal(result.totals.revealed, 0);
+});
+test('Bilan complet : 18 réussites distinctes et aucune note calculée', () => {
+  const state = app.storage.empty();
+  Object.values(state.records).forEach(record => { record.attempts = 1; record.solved = true; });
+  const result = app.exercises.review(state);
+  assert.equal(result.totals.independent, 18); assert.equal(result.totals.unfinished, 0);
+  assert.equal(new Set(result.items.map(item => item.exercise.id)).size, 18);
+});
+test('Sauvegarde partielle : une chaîne ne remplace jamais les tableaux de pixels ou portes', () => {
+  for (const value of ['01001010', {}, [1, 0], 42, null]) {
+    const raw = { version: 1, records: { s1e5: { answers: { pixels: value } }, s3e3: { answers: { doors: value, newDoors: value } } } };
+    const state = app.storage.sanitize(raw);
+    assert.equal(state.records.s1e5.answers.pixels, undefined);
+    assert.equal(state.records.s3e3.answers.doors, undefined);
+    assert.equal(state.records.s3e3.answers.newDoors, undefined);
+  }
+});
+test('Échec d’écriture : la reprise en mémoire ne recharge pas une ancienne sauvegarde', () => {
+  const old = app.storage.empty(); old.records.s1e1.answers = { binary: '10' };
+  const store = app.storage.createStore({ getItem: () => JSON.stringify(old), setItem() { throw Error('Quota dépassé'); } });
+  const state = store.load(); state.records.s1e1.answers.binary = '10111'; store.save(state);
+  assert.equal(store.persistent, false);
+  assert.equal(store.load().records.s1e1.answers.binary, '10111');
+  store.reset(); assert.equal(Object.keys(store.load().records.s1e1.answers).length, 0);
+});
+test('Une sauvegarde illisible ou incompatible déclenche un avis, une sauvegarde absente non', () => {
+  for (const value of ['{cassé', 'null', '{"version":99}', '{"version":1,"records":null}']) {
+    let notifications = 0;
+    const store = app.storage.createStore({ getItem: () => value, setItem() {} }, () => {}, () => { notifications += 1; });
+    assert.equal(Object.keys(store.load().records).length, 18); assert.equal(notifications, 1);
+  }
+  let notices = 0; app.storage.createStore({ getItem: () => null, setItem() {} }, () => {}, () => { notices += 1; }).load(); assert.equal(notices, 0);
+});

@@ -7,10 +7,11 @@
   const store = app.storage.createStore({
     getItem: key => window.localStorage.getItem(key),
     setItem: (key, value) => window.localStorage.setItem(key, value)
-  }, () => { notice.hidden = false; });
+  }, () => { notice.hidden = false; }, () => { document.getElementById('storage-recovery').hidden = false; });
   let state = store.load();
   let view = 'home';
   const confirmDialog = document.getElementById('confirm-dialog');
+  app.guides.trapFocus(confirmDialog);
   let confirmedAction;
   let confirmTrigger;
   const el = (tag, value, className) => {
@@ -37,12 +38,21 @@
   }
   document.getElementById('cancel-confirm').addEventListener('click', () => confirmDialog.close());
   document.getElementById('accept-confirm').addEventListener('click', () => {
-    const action = confirmedAction; confirmDialog.close(); confirmedAction = null; if (action) action();
+    const action = confirmedAction;
+    confirmedAction = null; confirmTrigger = null;
+    confirmDialog.close();
+    // Save/reset immediately, even if the page is reloaded before the close event.
+    if (action) action();
   });
-  confirmDialog.addEventListener('close', () => { if (confirmTrigger && confirmTrigger.isConnected) confirmTrigger.focus(); });
+  confirmDialog.addEventListener('close', () => {
+    if (confirmDialog.open) return;
+    if (confirmTrigger && confirmTrigger.isConnected) confirmTrigger.focus();
+    confirmTrigger = null; confirmedAction = null;
+  });
+  document.getElementById('open-review').addEventListener('click', () => review());
   document.querySelectorAll('[data-guide]').forEach(node => node.addEventListener('click', () => app.guides.open(node.dataset.guide, node)));
   function home(moveFocus = true) {
-    view = 'home'; screen.replaceChildren();
+    view = 'home'; document.title = 'Mission binaire — Répétition de maths'; screen.replaceChildren();
     const hero = el('section', undefined, 'module-hero');
     const copy = el('div');
     copy.append(el('p', 'BIENVENUE DANS L’ATELIER DES 0 ET DES 1', 'eyebrow'), el('h1', 'Mission binaire'), el('p', 'Répétition de maths', 'subtitle'), el('p', 'Et si tu apprenais à parler le langage des ordinateurs ? Des nombres aux pixels, explore ce que cachent les bits.', 'intro'));
@@ -92,9 +102,49 @@
     screen.append(el('p', 'Tes réponses restent sur cet appareil et dans ce navigateur. Aucune donnée personnelle n’est collectée.', 'privacy'));
     if (moveFocus) focusScreen();
   }
+  function review() {
+    view = 'review'; document.title = 'Mon bilan — Mission binaire'; screen.replaceChildren();
+    const result = app.exercises.review(state);
+    const top = el('div', undefined, 'exercise-top');
+    top.append(button('← Retour aux séries', () => home(), 'text-button'), progress()); screen.append(top);
+    const hero = el('section', undefined, 'review-hero');
+    hero.append(el('p', 'CHAQUE ESSAI FAIT AVANCER', 'eyebrow'), el('h1', 'Mon bilan'),
+      el('p', 'Regarde le chemin parcouru, puis choisis ce que tu veux explorer ou revoir. Tu peux reprendre chaque exercice, à tout moment.', 'intro'),
+      el('p', `${result.totals.attempted} / ${app.data.length} exercices tentés · ${result.totals.solved} / ${app.data.length} réussis`, 'review-counts'));
+    screen.append(hero);
+    const summary = el('dl', undefined, 'review-summary');
+    Object.entries(app.exercises.reviewLabels).forEach(([category, label]) => {
+      const tile = el('div', undefined, `review-tile ${category}`); tile.dataset.category = category;
+      tile.append(el('dt', label), el('dd', String(result.totals[category]))); summary.append(tile);
+    }); screen.append(summary);
+    app.series.forEach(series => {
+      const section = el('section', undefined, 'review-series');
+      section.append(el('h2', `Série ${series.number} — ${series.title}`));
+      const list = el('ol', undefined, 'review-list');
+      result.items.filter(item => item.exercise.series === series.number).forEach(item => {
+        const ex = item.exercise; const record = state.records[ex.id];
+        const row = el('li', undefined, 'review-item'); row.dataset.exercise = ex.id;
+        const copy = el('div', undefined, 'review-item-copy');
+        const jump = button(`${ex.position}. ${ex.title}`, () => exercise(app.data.indexOf(ex)), 'text-button review-jump');
+        const counts = el('p', `${record.attempts} validation(s) · ${record.hints} indice(s)${record.solutionViewed ? ' · solution déjà consultée' : ''}`, 'review-details');
+        copy.append(jump, counts);
+        if (item.needsPractice) {
+          const advice = el('div', undefined, 'review-advice');
+          advice.append(el('p', `À consolider : ${ex.label.toLocaleLowerCase('fr')}.`));
+          [ex.guide, ...(ex.extraGuides || [])].forEach(id => advice.append(button(app.guides.titles[id], event => app.guides.open(id, event.currentTarget), 'guide-link')));
+          copy.append(advice);
+        }
+        row.append(copy, el('span', item.label, `status ${item.category}`)); list.append(row);
+      });
+      section.append(list); screen.append(section);
+    });
+    screen.append(el('p', 'Les résultats restent dans ce navigateur, sur cet appareil. Ils ne sont ni envoyés ni synchronisés. Pour tout effacer, utilise « Recommencer ma progression » sur l’accueil.', 'privacy'));
+    focusScreen();
+  }
   function exercise(index) {
     view = 'exercise'; state.current = index;
     const ex = app.data[index]; const record = state.records[ex.id];
+    document.title = `Série ${ex.series}, exercice ${ex.position} — Mission binaire`;
     state.positions[ex.series] = index; save(); screen.replaceChildren();
     const top = el('div', undefined, 'exercise-top');
     top.append(button('← Retour aux séries', () => home(), 'text-button'), progress()); screen.append(top);
@@ -108,7 +158,7 @@
     const navigation = el('nav', undefined, 'step-nav'); navigation.setAttribute('aria-label', `Exercices de la série ${ex.series}`);
     app.data.forEach((item, i) => {
       if (item.series !== ex.series) return;
-      const step = button(String(item.position).padStart(2, '0'), () => exercise(i), 'step');
+      const step = button(String(item.position), () => exercise(i), 'step');
       step.setAttribute('aria-label', `Exercice ${item.position} : ${item.title}${state.records[item.id].solved ? ', réussi' : ''}`);
       if (i === index) step.setAttribute('aria-current', 'step');
       if (state.records[item.id].solved) step.classList.add('complete'); navigation.append(step);
@@ -141,6 +191,7 @@
           function update() {
             const value = pixels[i]; pixel.textContent = value === null ? '?' : String(value);
             pixel.classList.toggle('white', value === 1); pixel.classList.toggle('black', value === 0);
+            pixel.setAttribute('aria-describedby', error.id);
             pixel.setAttribute('aria-label', doors ? `Porte ${8 - i}, bit ${7 - i} : ${value === null ? 'indéterminée' : value ? 'autorisée, 1' : 'interdite, 0'}` : `Pixel ${i + 1} : ${value === null ? 'indéterminé' : value ? 'blanc, 1' : 'noir, 0'}`);
           }
           update(); column.append(pixel, el('span', doors ? `P${8 - i}` : String(i + 1), 'pixel-index')); grid.append(column);
@@ -188,7 +239,12 @@
         nodes.error.textContent = result.errors[id] || ''; nodes.input.setAttribute('aria-invalid', String(Boolean(result.errors[id])));
       });
       feedback.className = `feedback ${result.correct ? 'success' : 'retry'}`;
-      feedback.textContent = result.correct ? `Bien joué ! ${app.exercises.solution(ex).at(-1)}` : 'Pas encore. Vérifie les indications sous tes réponses, puis réessaie. La solution reste masquée.';
+      feedback.textContent = result.correct ? `Bien joué ! ${app.exercises.solution(ex).at(-1)}`
+        : `Pas encore. Vérifie les indications sous tes réponses, puis réessaie.${record.solutionViewed ? '' : ' La solution reste masquée.'}`;
+      if (!result.correct) {
+        const firstError = fieldNodes[Object.keys(result.errors)[0]].input;
+        (firstError.querySelector('button') || firstError).focus();
+      }
       refreshProgress();
     });
     card.append(form);
@@ -216,7 +272,7 @@
     aside.append(divider); layout.append(card, aside); screen.append(layout);
     const bottom = el('div', undefined, 'exercise-bottom');
     const previous = button('← Exercice précédent', () => exercise(index - 1), 'text-button'); previous.disabled = ex.position === 1;
-    bottom.append(previous, button(ex.position === 6 ? 'Terminer la série →' : 'Exercice suivant →', () => ex.position === 6 ? home() : exercise(index + 1), 'button secondary')); screen.append(bottom);
+    bottom.append(previous, button(ex.position === 6 ? 'Terminer la série →' : 'Exercice suivant →', () => ex.position === 6 ? review() : exercise(index + 1), 'button secondary')); screen.append(bottom);
     screen.append(el('p', 'Tu peux passer un exercice et y revenir à tout moment. Ici, pas de course au score.', 'privacy'));
     focusScreen();
   }

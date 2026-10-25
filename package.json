@@ -2,16 +2,18 @@
   "name": "atelier-revisions",
   "version": "0.1.0",
   "private": true,
-  "description": "Site statique scolaire — Mission binaire, lots 1 et 2",
+  "description": "Site statique scolaire — Mission binaire, lots 1 à 3",
   "scripts": {
     "test": "node --test tests/unit.test.cjs tests/architecture.test.cjs",
     "test:browser": "node --test tests/browser.test.cjs",
-    "test:all": "npm test && npm run test:browser"
+    "test:all": "npm test && npm run test:browser",
+    "export": "node scripts/export.cjs"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.11.0",
     "playwright": "1.58.2"
   }
 }

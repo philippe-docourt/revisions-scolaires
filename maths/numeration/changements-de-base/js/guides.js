@@ -5,6 +5,17 @@
   const content = document.getElementById('guide-content');
   const titles = { methodes: 'Guide des méthodes', pixels: 'Comprendre les pixels', ascii: 'Comprendre ASCII', rgb: 'Comprendre RGB', ip: 'Comprendre les adresses IP' };
   let returnFocus;
+  function trapFocus(modal) {
+    modal.addEventListener('keydown', event => {
+      if (event.key !== 'Tab') return;
+      const controls = [...modal.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), a[href], [tabindex="0"]')]
+        .filter(node => node.getClientRects().length > 0);
+      const first = controls[0]; const last = controls.at(-1);
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    });
+  }
+  trapFocus(dialog);
   const text = (tag, value, className) => {
     const node = document.createElement(tag); node.textContent = value;
     if (className) node.className = className;
@@ -144,5 +155,5 @@
   document.getElementById('close-guide').addEventListener('click', close);
   document.getElementById('return-guide').addEventListener('click', close);
   dialog.addEventListener('close', () => { if (returnFocus && returnFocus.isConnected) returnFocus.focus(); });
-  app.guides = { open, titles };
+  app.guides = { open, titles, trapFocus };
 }());

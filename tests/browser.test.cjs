@@ -7,9 +7,11 @@ const path = require('node:path');
 const os = require('node:os');
 const http = require('node:http');
 const { chromium } = require('playwright');
+const { AxeBuilder } = require('@axe-core/playwright');
 const references = require('./references.cjs');
+const { exportSite } = require('../scripts/export.cjs');
 const { root, moduleRoot } = require('./helpers.cjs');
-let browser, server, base, standaloneRoot;
+let browser, server, base, standaloneRoot, distributionRoot;
 const activityPath = 'maths/numeration/changements-de-base/';
 const errors = [];
 const contexts = [];
@@ -46,6 +48,7 @@ async function answerSeries(page) {
   assert.match(await page.locator('.progress-summary').innerText(), /6 \/ 18/);
   await page.getByRole('button', { name: 'Terminer la série' }).click();
   assert.equal(await page.locator('.status').filter({ hasText: 'Réussi sans aide' }).count(), 6);
+  await page.getByRole('button', { name: 'Retour aux séries' }).click();
 }
 async function fillAnswers(page, answers) {
   for (const [id, value] of Object.entries(answers)) {
@@ -77,6 +80,7 @@ async function answerNewSeries(page, series) {
   await page.getByRole('button', { name: 'Terminer la série' }).click();
   assert.match(await page.locator('.progress-summary').innerText(), new RegExp(`${series * 6} / 18`));
   assert.equal(await page.locator('.status').filter({ hasText: 'Réussi sans aide' }).count(), series * 6);
+  await page.getByRole('button', { name: 'Retour aux séries' }).click();
 }
 before(async () => {
   await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
@@ -84,13 +88,15 @@ before(async () => {
   browser = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox'] });
   standaloneRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-binaire-http-'));
   await fs.cp(moduleRoot, standaloneRoot, { recursive: true });
+  distributionRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'atelier-site-'));
+  await exportSite(distributionRoot);
   server = http.createServer(async (req, res) => {
     try {
       let relative = decodeURIComponent(new URL(req.url, 'http://local.test').pathname);
       const standalone = relative.startsWith('/standalone/');
-      if (!standalone && !relative.startsWith('/revisions-scolaires/')) { res.writeHead(404).end(); return; }
-      relative = relative.slice(standalone ? '/standalone/'.length : '/revisions-scolaires/'.length);
-      const documentRoot = standalone ? standaloneRoot : root;
+      const prefixed = relative.startsWith('/revisions-scolaires/');
+      relative = relative.slice(standalone ? '/standalone/'.length : prefixed ? '/revisions-scolaires/'.length : 1);
+      const documentRoot = standalone ? standaloneRoot : prefixed ? root : distributionRoot;
       let file = path.resolve(documentRoot, relative || '.');
       if (file !== documentRoot && !file.startsWith(documentRoot + path.sep)) { res.writeHead(403).end(); return; }
       if ((await fs.stat(file)).isDirectory()) file = path.join(file, 'index.html');
@@ -106,6 +112,7 @@ after(async () => {
   if (browser) await browser.close();
   if (server) await new Promise(resolve => server.close(resolve));
   if (standaloneRoot) await fs.rm(standaloneRoot, { recursive: true, force: true });
+  if (distributionRoot) await fs.rm(distributionRoot, { recursive: true, force: true });
 });
 test('Desktop : catalogue sous un préfixe, navigation et 18 exercices complets', async () => {
   const ctx = await context({ viewport: { width: 1440, height: 1000 } }); const page = await ctx.newPage();
@@ -133,7 +140,7 @@ test('Erreurs, indices gradués, confirmations et statuts d’aide', async () =>
   await page.getByRole('button', { name: 'Annuler', exact: true }).click(); assert.equal(await visible(page, '#solution'), false);
   assert.equal(await page.getByRole('button', { name: 'Voir la méthode', exact: true }).evaluate(node => node === document.activeElement), true);
   await page.getByRole('button', { name: 'Voir la méthode', exact: true }).click(); await page.getByRole('button', { name: 'Confirmer', exact: true }).click();
-  assert.equal(await visible(page, '#solution'), true); assert.match(await page.locator('#solution').innerText(), /10111/);
+  await page.locator('#solution').waitFor({ state: 'visible' }); assert.match(await page.locator('#solution').innerText(), /10111/);
   await page.getByRole('button', { name: 'Retour aux séries' }).click(); assert.equal(await page.locator('.status').first().innerText(), 'Solution consultée');
   await page.getByRole('button', { name: 'Reprendre la série 1' }).click(); await page.locator('#answer-binary').fill('10111'); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
   await page.getByRole('button', { name: 'Retour aux séries' }).click(); assert.equal(await page.locator('.status').first().innerText(), 'Réussi après aide ou tentative');
@@ -205,13 +212,19 @@ test('file:// hors ligne : catalogue et dossier du module copié ailleurs', asyn
     throw error;
   }
   await page.getByRole('link', { name: 'Ouvrir l’activité' }).click();
-  await page.getByRole('button', { name: 'Commencer la série 1' }).click(); await page.locator('#answer-binary').fill('10111'); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
-  assert.match(await page.locator('#feedback').innerText(), /Bien joué/);
+  await page.getByRole('button', { name: /^(Commencer|Reprendre) la série 1/ }).click();
+  await answerSeries(page); await answerNewSeries(page, 2); await answerNewSeries(page, 3);
+  for (const name of ['Guide des méthodes', 'Comprendre les pixels', 'Comprendre ASCII', 'Comprendre RGB', 'Comprendre les adresses IP']) {
+    await page.locator('.home-bottom').getByRole('button', { name }).click();
+    assert.equal(await visible(page, '#guide-dialog'), true); await page.keyboard.press('Escape');
+  }
+  await page.getByRole('button', { name: 'Mon bilan', exact: true }).click();
+  assert.equal(await page.locator('[data-category="independent"] dd').innerText(), '18');
   const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-binaire-'));
   try {
     await fs.cp(moduleRoot, path.join(temporary, 'activite'), { recursive: true });
     await page.goto('file://' + path.join(temporary, 'activite/index.html'));
-    await page.getByRole('button', { name: 'Commencer la série 1' }).click(); await exercise(page, 5);
+    await page.getByRole('button', { name: /^(Commencer|Reprendre) la série 1/ }).click(); await exercise(page, 5);
     await page.getByRole('button', { name: 'Comprendre les pixels' }).click(); await page.locator('#guide-dialog .pixel').first().click();
     assert.match(await page.locator('.bit-output').innerText(), /128₁₀/); assert.deepEqual(remote, []);
   } finally { await fs.rm(temporary, { recursive: true, force: true }); }
@@ -299,7 +312,7 @@ test('Séries 2 et 3 : erreurs sans solution, indices et corrigés sur demande p
     await page.getByRole('button', { name: 'Voir la méthode', exact: true }).click(); await page.getByRole('button', { name: 'Annuler', exact: true }).click();
     assert.equal(await visible(page, '#solution'), false);
     await page.getByRole('button', { name: 'Voir la méthode', exact: true }).click(); await page.getByRole('button', { name: 'Confirmer', exact: true }).click();
-    assert.equal(await visible(page, '#solution'), true); assert.ok(await page.locator('#solution li').count() >= 2);
+    await page.locator('#solution').waitFor({ state: 'visible' }); assert.ok(await page.locator('#solution li').count() >= 2);
     await fillAnswers(page, references[number - 1]); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
     assert.match(await page.locator('#feedback').innerText(), /Bien joué/);
   }
@@ -320,5 +333,165 @@ test('Reprise HTTP des portes et migration d’une sauvegarde du lot 1', async (
   await page.getByRole('button', { name: 'Retour aux séries' }).click();
   assert.equal(await page.locator('.series-card[data-series="1"] .series-progress').innerText(), '1 / 6 exercices réussis');
   assert.equal(await page.locator('.series-card[data-series="3"] .series-progress').innerText(), '1 / 6 exercices réussis');
+});
+test('Bilan : 18 exercices, quatre statuts, conseils, reprise et confirmation de fin de série', async () => {
+  const ctx = await context(); const page = await ctx.newPage(); await page.goto(base + activityPath);
+  await page.getByRole('button', { name: 'Mon bilan', exact: true }).click();
+  assert.equal(await page.locator('.review-item').count(), 18);
+  assert.equal(await page.locator('[data-category="unfinished"] dd').innerText(), '18');
+  await page.getByRole('button', { name: 'Retour aux séries' }).click();
+  await page.getByRole('button', { name: 'Commencer la série 1' }).click();
+  await fillAnswers(page, references[0]); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
+  await exercise(page, 2); await page.locator('#answer-decimal').fill('1'); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
+  assert.equal(await page.locator('#answer-decimal').evaluate(node => node === document.activeElement), true);
+  await fillAnswers(page, references[1]); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
+  await exercise(page, 3); await page.getByRole('button', { name: 'Voir la méthode', exact: true }).click(); await page.getByRole('button', { name: 'Confirmer', exact: true }).click();
+  await page.locator('#solution').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('#solution').evaluate(node => node === document.activeElement), true);
+  await exercise(page, 4); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
+  await page.getByRole('button', { name: 'Mon bilan', exact: true }).click();
+  assert.match(await page.locator('.review-counts').innerText(), /3 \/ 18 exercices tentés · 2 \/ 18 réussis/);
+  for (const [category, count] of [['independent', '1'], ['supported', '1'], ['revealed', '1'], ['unfinished', '15']]) assert.equal(await page.locator(`[data-category="${category}"] dd`).innerText(), count);
+  const supported = page.locator('[data-exercise="s1e2"]'); assert.match(await supported.locator('.status').innerText(), /Réussi après indice ou tentative/);
+  const guide = supported.getByRole('button', { name: 'Guide des méthodes', exact: true }); await guide.click(); await page.keyboard.press('Escape');
+  assert.equal(await guide.evaluate(node => node === document.activeElement), true);
+  await supported.locator('.review-jump').click(); assert.equal(await page.locator('#answer-decimal').inputValue(), '45');
+  await exercise(page, 6); await page.getByRole('button', { name: 'Terminer la série' }).click();
+  assert.equal(await page.getByRole('heading', { name: 'Mon bilan', exact: true }).count(), 1);
+  await noOverflow(page); await page.screenshot({ path: path.join(root, 'artifacts/bilan-desktop.png'), fullPage: true });
+  await page.setViewportSize({ width: 375, height: 812 }); await noOverflow(page);
+  await page.screenshot({ path: path.join(root, 'artifacts/bilan-mobile.png'), fullPage: true });
+});
+test('Sauvegardes corrompues ou partiellement malformées : avis et application utilisable', async () => {
+  const ctx = await context(); const page = await ctx.newPage(); await page.goto(base + activityPath);
+  await page.evaluate(() => localStorage.setItem('mission-binaire:v1', '{cassé')); await page.reload();
+  assert.equal(await visible(page, '#storage-recovery'), true);
+  await page.getByRole('button', { name: 'Commencer la série 1' }).click(); await exercise(page, 5);
+  assert.equal(await page.locator('#answer-pixels .pixel').count(), 8);
+  const invalid = { version: 1, current: 14, records: { s1e5: { answers: { pixels: '00101101' } }, s3e3: { answers: { doors: '01001010', newDoors: [1] } } } };
+  await page.evaluate(state => localStorage.setItem('mission-binaire:v1', JSON.stringify(state)), invalid); await page.reload();
+  await page.getByRole('button', { name: 'Reprendre la série 3' }).click();
+  assert.equal(await page.locator('#answer-doors .pixel').allTextContents().then(values => values.join('')), '????????');
+  assert.equal(await page.locator('#answer-newDoors .pixel').allTextContents().then(values => values.join('')), '????????');
+  await page.getByRole('button', { name: 'Mon bilan', exact: true }).click(); assert.equal(await page.locator('.review-item').count(), 18);
+});
+test('Persistance après fermeture et redémarrage du navigateur', async () => {
+  const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'mission-profile-'));
+  const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || (syncFs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined);
+  let ctx;
+  try {
+    ctx = await chromium.launchPersistentContext(profile, { executablePath, headless: true, args: ['--no-sandbox'] });
+    let page = await ctx.newPage(); await page.goto(base + activityPath);
+    await page.getByRole('button', { name: 'Commencer la série 3' }).click(); await exercise(page, 18);
+    await fillAnswers(page, references[17]); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
+    await ctx.close(); ctx = null;
+    ctx = await chromium.launchPersistentContext(profile, { executablePath, headless: true, args: ['--no-sandbox'] });
+    page = await ctx.newPage(); await page.goto(base + activityPath);
+    await page.getByRole('button', { name: 'Reprendre la série 3' }).click();
+    assert.equal(await page.locator('#answer-binary').inputValue(), '10101111');
+    await page.getByRole('button', { name: 'Mon bilan', exact: true }).click();
+    assert.equal(await page.locator('[data-exercise="s3e6"] .status').innerText(), 'Réussi sans aide');
+    await page.getByRole('button', { name: 'Retour aux séries' }).click();
+    await page.getByRole('button', { name: 'Recommencer ma progression' }).click();
+    await page.getByRole('button', { name: 'Annuler', exact: true }).click();
+    assert.match(await page.locator('.progress-summary').innerText(), /1 \/ 18/);
+    await page.getByRole('button', { name: 'Recommencer ma progression' }).click();
+    await page.getByRole('button', { name: 'Confirmer', exact: true }).click();
+    await page.getByRole('button', { name: 'Mon bilan', exact: true }).click();
+    assert.equal(await page.locator('[data-category="unfinished"] dd').innerText(), '18');
+    await ctx.close(); ctx = null;
+  } finally { if (ctx) await ctx.close(); await fs.rm(profile, { recursive: true, force: true }); }
+});
+async function audit(page, name) {
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']).analyze();
+  await fs.writeFile(path.join(root, `artifacts/accessibilite-${name}.json`), JSON.stringify(result, null, 2));
+  assert.deepEqual(result.violations.map(item => ({ id: item.id, help: item.help, count: item.nodes.length, first: { target: item.nodes[0].target, detail: item.nodes[0].failureSummary } })), []);
+  // Check contrast cases axe cannot resolve (glyphs and some top-layer dialogues),
+  // without excluding any element or disabling a rule in the audit.
+  for (const item of result.incomplete) {
+    assert.equal(item.id, 'color-contrast', `Vérification complémentaire requise : ${item.id}`);
+    for (const node of item.nodes) {
+      const glyph = node.any.every(check => check.data?.messageKey === 'nonBmp');
+      assert.ok(node.any.every(check => ['nonBmp', 'elmPartiallyObscuring'].includes(check.data?.messageKey)), node.failureSummary);
+      const inspection = await page.locator(node.target[0]).evaluate((element, glyph) => {
+        const rgb = color => color.match(/[\d.]+/g).map(Number);
+        const luminance = channels => channels.slice(0, 3).map(value => {
+          const component = value / 255;
+          return component <= 0.04045 ? component / 12.92 : ((component + 0.055) / 1.055) ** 2.4;
+        }).reduce((sum, value, i) => sum + value * [0.2126, 0.7152, 0.0722][i], 0);
+        const foreground = rgb(getComputedStyle(element).color);
+        let background; let ancestor = element;
+        while (ancestor) {
+          const channels = rgb(getComputedStyle(ancestor).backgroundColor);
+          if (channels.length === 3 || channels[3] === 1) { background = channels; break; }
+          if (channels[3] !== 0) throw Error('Fond translucide : inspection complémentaire nécessaire.');
+          ancestor = ancestor.parentElement;
+        }
+        if (!background) throw Error('Fond indéterminé.');
+        const first = luminance(foreground); const second = luminance(background);
+        const ratio = (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+        let unobscured = true;
+        if (!glyph) {
+          const range = document.createRange(); range.selectNodeContents(element);
+          unobscured = [...range.getClientRects()].every(rect => {
+            const front = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+            return front && (element === front || element.contains(front));
+          });
+        }
+        return { ratio, unobscured };
+      }, glyph);
+      assert.ok(inspection.unobscured, `Texte masqué : ${node.target}`);
+      const threshold = glyph ? 3 : 4.5;
+      assert.ok(inspection.ratio >= threshold, `Contraste ${node.target}: ${inspection.ratio.toFixed(2)} < ${threshold}:1`);
+    }
+  }
+}
+test('Accessibilité automatisée : catalogue, 18 exercices, cinq fiches, confirmation et bilan', async () => {
+  const ctx = await context(); const page = await ctx.newPage(); await page.goto(base); await audit(page, 'catalogue');
+  await page.getByRole('link', { name: 'Ouvrir l’activité' }).click(); await audit(page, 'accueil');
+  await page.getByRole('button', { name: 'Commencer la série 1' }).click();
+  for (let number = 1; number <= 18; number += 1) { await exercise(page, number); await audit(page, `exercice-${number}`); }
+  await page.getByRole('button', { name: 'Voir la méthode', exact: true }).click(); await audit(page, 'confirmation'); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Retour aux séries' }).click();
+  for (const [id, name] of [['methodes', 'Guide des méthodes'], ['pixels', 'Comprendre les pixels'], ['ascii', 'Comprendre ASCII'], ['rgb', 'Comprendre RGB'], ['ip', 'Comprendre les adresses IP']]) {
+    await page.locator('.home-bottom').getByRole('button', { name }).click(); await audit(page, `fiche-${id}`); await page.keyboard.press('Escape');
+  }
+  await page.getByRole('button', { name: 'Mon bilan', exact: true }).click(); await audit(page, 'bilan');
+});
+test('Clavier : lien d’évitement, focus, dialogues et agrandissement du texte', async () => {
+  const ctx = await context({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' }); const page = await ctx.newPage();
+  await page.goto(base + activityPath); await page.keyboard.press('Tab'); assert.equal(await page.locator('.skip-link').evaluate(node => node === document.activeElement), true);
+  await page.keyboard.press('Enter'); assert.equal(await page.locator('main').evaluate(node => node === document.activeElement), true);
+  const guide = page.locator('[data-guide="methodes"]'); await guide.focus(); await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#close-guide').evaluate(node => node === document.activeElement), true);
+  await page.keyboard.press('Shift+Tab'); assert.equal(await page.locator('#return-guide').evaluate(node => node === document.activeElement), true);
+  await page.keyboard.press('Tab'); assert.equal(await page.locator('#close-guide').evaluate(node => node === document.activeElement), true);
+  const focusStyle = await page.locator('#close-guide').evaluate(node => ({ width: getComputedStyle(node).outlineWidth, style: getComputedStyle(node).outlineStyle }));
+  assert.equal(focusStyle.style, 'solid'); assert.ok(parseFloat(focusStyle.width) >= 2);
+  await page.keyboard.press('Escape'); assert.equal(await guide.evaluate(node => node === document.activeElement), true);
+  await page.getByRole('button', { name: 'Commencer la série 1' }).click(); await exercise(page, 5);
+  // Reflow equivalent to 400% browser zoom on a 1280 px viewport.
+  await page.setViewportSize({ width: 320, height: 740 }); await noOverflow(page);
+  await page.getByRole('button', { name: 'Mon bilan', exact: true }).click(); await noOverflow(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => {
+    const original = [...document.querySelectorAll('body, body *')].map(node => [node, parseFloat(getComputedStyle(node).fontSize)]);
+    original.forEach(([node, size]) => { node.style.fontSize = `${size * 2}px`; });
+  });
+  await noOverflow(page);
+});
+test('Distribution à la racine du domaine : catalogue, ressources locales, activité et bilan', async () => {
+  const ctx = await context(); const page = await ctx.newPage(); const external = []; const failures = [];
+  page.on('request', request => { if (new URL(request.url()).origin !== new URL(base).origin) external.push(request.url()); });
+  page.on('response', response => { if (response.status() >= 400 && !response.url().endsWith('favicon.ico')) failures.push(response.url()); });
+  await page.goto(new URL('/', base).href); await page.getByRole('link', { name: 'Ouvrir l’activité' }).click();
+  assert.equal(new URL(page.url()).pathname, '/' + activityPath);
+  await page.getByRole('button', { name: 'Commencer la série 2' }).click(); await exercise(page, 12);
+  await fillAnswers(page, references[11]); await page.getByRole('button', { name: 'Vérifier ma réponse' }).click();
+  assert.match(await page.locator('#feedback').innerText(), /#FF8040/);
+  await page.locator('.help-card').getByRole('button', { name: 'Comprendre RGB' }).click(); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'Mon bilan', exact: true }).click();
+  assert.equal(await page.locator('[data-exercise="s2e6"] .status').innerText(), 'Réussi sans aide');
+  assert.deepEqual(failures, []); assert.deepEqual(external, []);
 });
 test('Aucune erreur JavaScript pendant les parcours', () => { assert.deepEqual(errors, []); });

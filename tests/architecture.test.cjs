@@ -41,3 +41,23 @@ test('Catalogue : une seule activité réelle, classée Maths → Numération', 
   assert.ok(fs.existsSync(path.join(root, activity.chemin, 'index.html')));
   assert.doesNotMatch(source, /expected|solution|answers/);
 });
+
+test('Distribution : ressources locales complètes, sans outils ni tests', async () => {
+  const fsp = require('node:fs/promises');
+  const os = require('node:os');
+  const { exportSite, files: webFiles } = require('../scripts/export.cjs');
+  const directory = await fsp.mkdtemp(path.join(os.tmpdir(), 'atelier-export-'));
+  try {
+    await exportSite(directory);
+    assert.equal(files(directory).length, 11);
+    assert.ok(webFiles.every(file => !/node_modules|tests\/|package|\.md$/.test(file)));
+    for (const file of webFiles) assert.equal(await fsp.readFile(path.join(directory, file), 'utf8'), await fsp.readFile(path.join(root, file), 'utf8'));
+    for (const file of files(directory).filter(file => file.endsWith('.html'))) {
+      const source = await fsp.readFile(file, 'utf8');
+      for (const match of source.matchAll(/(?:src|href)="([^"#][^"]*)"/g)) assert.equal(fs.existsSync(path.resolve(path.dirname(file), match[1])), true, match[1]);
+    }
+    assert.equal(fs.existsSync(path.join(directory, 'maths/numeration/changements-de-base/index.html')), true);
+    await fsp.writeFile(path.join(directory, 'note-personnelle.txt'), 'À conserver');
+    await exportSite(directory); assert.equal(await fsp.readFile(path.join(directory, 'note-personnelle.txt'), 'utf8'), 'À conserver');
+  } finally { await fsp.rm(directory, { recursive: true, force: true }); }
+});
